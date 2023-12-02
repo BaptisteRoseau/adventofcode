@@ -1,16 +1,6 @@
-use std::collections::HashMap;
-use std::env;
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::path::Path;
-
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
-}
+use clap::Parser;
+use std::{collections::HashMap, u8};
+use utils::{read_lines, Config};
 
 fn finddall(text: &String, pattern: &str) -> Vec<usize> {
     let mut output = Vec::new();
@@ -24,8 +14,8 @@ fn finddall(text: &String, pattern: &str) -> Vec<usize> {
     output
 }
 
-fn extract_number(text: String) -> u8 {
-    let text_to_digit: HashMap<&str, u8> = HashMap::from([
+fn extract_number(text: String, part: u8) -> u8 {
+    let mut text_to_digit: HashMap<&str, u8> = HashMap::from([
         ("1", 1),
         ("2", 2),
         ("3", 3),
@@ -35,18 +25,24 @@ fn extract_number(text: String) -> u8 {
         ("7", 7),
         ("8", 8),
         ("9", 9),
-        // Comment bellow for part one
-        ("one", 1),
-        ("two", 2),
-        ("three", 3),
-        ("four", 4),
-        ("five", 5),
-        ("six", 6),
-        ("seven", 7),
-        ("eight", 8),
-        ("nine", 9),
     ]);
+    if part == 2 {
+        text_to_digit.extend(HashMap::from([
+            ("one", 1),
+            ("two", 2),
+            ("three", 3),
+            ("four", 4),
+            ("five", 5),
+            ("six", 6),
+            ("seven", 7),
+            ("eight", 8),
+            ("nine", 9),
+        ]));
+    } else if part != 1 {
+        panic!("Part should be either 1 or 2 (1 by default)");
+    }
 
+    // Get each pattern location
     let mut indexes: HashMap<usize, &str> = HashMap::new();
     for digit_str in text_to_digit.keys().into_iter() {
         for pos in finddall(&text, digit_str).into_iter() {
@@ -54,6 +50,7 @@ fn extract_number(text: String) -> u8 {
         }
     }
 
+    // Keep only the first and last pattern locations
     let first = text_to_digit
         .get(indexes.get(indexes.keys().min().unwrap()).unwrap())
         .unwrap();
@@ -66,14 +63,12 @@ fn extract_number(text: String) -> u8 {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let config = Config::parse();
     let mut sum: u64 = 0;
-    if let Ok(lines) = read_lines(args.get(1).unwrap()) {
-        for line in lines {
-            if let Ok(text) = line {
-                sum += extract_number(text) as u64;
-            }
+    for line in read_lines(config.file).unwrap() {
+        if let Ok(text) = line {
+            sum += extract_number(text, config.part) as u64
         }
     }
-    println!("TOTAL: {}", sum);
+    println!("{}", sum);
 }

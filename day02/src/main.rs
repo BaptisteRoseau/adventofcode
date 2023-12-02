@@ -1,16 +1,6 @@
+use clap::Parser;
 use std::collections::HashMap;
-use std::env;
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::path::Path;
-
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
-}
+use utils::{read_lines, Config};
 
 const RED: &str = "red";
 const GREEN: &str = "green";
@@ -52,19 +42,17 @@ fn game_id_part_one(line: String) -> usize {
 
     for (amount, color) in balls_to_vector(line).into_iter() {
         if amount > *limits.get(color).unwrap() {
-            println!("GAME {}:\tIMPOSSIBLE", game_id);
             return 0;
         }
     }
 
-    println!("GAME {}:\tPOSSIBLE", game_id);
     game_id
 }
 
 fn minimum_cube_amount_part_two(line: String) -> usize {
     let mut minimum_seen: HashMap<&str, usize> = HashMap::from([(RED, 1), (GREEN, 1), (BLUE, 1)]);
     let mut line = line.clone();
-    let game_id = pop_game_id(&mut line);
+    pop_game_id(&mut line);
 
     for (amount, color) in balls_to_vector(line).into_iter() {
         if amount > *minimum_seen.get(color).unwrap() {
@@ -73,25 +61,20 @@ fn minimum_cube_amount_part_two(line: String) -> usize {
     }
 
     let power = minimum_seen.into_values().product();
-    println!("GAME {}:\t{}", game_id, power);
     power
 }
 
 fn main() {
-    let default_part: String = "1".to_string();
-    let args: Vec<String> = env::args().collect();
-    let part = args.get(2).unwrap_or(&default_part);
+    let config = Config::parse();
     let mut sum: u64 = 0;
-    if let Ok(lines) = read_lines(args.get(1).unwrap()) {
-        for line in lines {
-            if let Ok(text) = line {
-                sum += match part.as_str() {
-                    "1" => game_id_part_one(text) as u64,
-                    "2" => minimum_cube_amount_part_two(text) as u64,
-                    _ => panic!("Part should be either 1 or 2 (1 by default)"),
-                }
+    for line in read_lines(config.file).unwrap() {
+        if let Ok(text) = line {
+            sum += match config.part {
+                1 => game_id_part_one(text) as u64,
+                2 => minimum_cube_amount_part_two(text) as u64,
+                _ => panic!("Part should be either 1 or 2 (1 by default)"),
             }
         }
     }
-    println!("TOTAL: {}", sum);
+    println!("{}", sum);
 }
