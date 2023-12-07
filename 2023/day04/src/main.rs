@@ -2,15 +2,30 @@ use clap::Parser;
 use std::collections::{hash_map::RandomState, HashSet};
 use utils::{read_lines, Config};
 
+/// Information of a Card:
+///
+///     Card  16: 13 93  1 50 51 28 73 67 56  4 | 12 81 20 82  9 48 21 78 36 17 76 35 57 91 18 27 11 16 49 23  5 65 58 29 62
+///
+/// Will result in:
+///
+/// ```
+/// Card {
+///     winning: {13, 93, 1, 50, 51, 28, 73, 67, 56, 4},
+///     current: {12, 81, 20, 82, 9, 48, 21, 78, 36, 17, 76, 35, 57, 91, 18, 27, 11, 16, 49, 23, 5, 65, 58, 29, 62},
+///     id: 16,
+/// }
+/// ```
+///
+/// Note that we can use a HashSet because winning and got numbers
+/// are not supposed to contain duplicates in a lottery.
 #[derive(Debug)]
 struct Card {
-    winning: Vec<usize>,
-    current: Vec<usize>,
+    winning: HashSet<usize>,
+    current: HashSet<usize>,
     id: usize,
 }
 
-fn deserialize_numbers(s: &str) -> Vec<usize> {
-    // 58  6 71 93 96 38 25 29 17  8
+fn deserialize_numbers(s: &str) -> HashSet<usize> {
     s.split_ascii_whitespace()
         .map(|n| n.trim().parse::<usize>().unwrap())
         .collect()
@@ -40,28 +55,12 @@ impl From<String> for Card {
     }
 }
 
-fn vec_to_set(value: Vec<usize>) -> HashSet<usize, RandomState> {
-    let mut output = HashSet::new();
-    for item in value.iter() {
-        output.insert(*item);
-    }
-    output
-}
-
 #[warn(unused_variables)]
 fn part_one(line: String) -> usize {
     let card = Card::from(line);
-
-    // Converting into HashSet and ensuring there are no duplicate
-    let expected_c = card.current.len();
-    let expected_w = card.winning.len();
-    let current_set: HashSet<usize> = vec_to_set(card.current);
-    let winning_set: HashSet<usize> = vec_to_set(card.winning);
-    assert_eq!(expected_c, current_set.len());
-    assert_eq!(expected_w, winning_set.len());
-
-    let winners: HashSet<usize, RandomState> = current_set
-        .intersection(&winning_set)
+    let winners: HashSet<usize, RandomState> = card
+        .current
+        .intersection(&card.winning)
         .map(|item| *item)
         .collect();
     if winners.is_empty() {
