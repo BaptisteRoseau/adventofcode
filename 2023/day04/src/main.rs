@@ -1,5 +1,9 @@
 use clap::Parser;
-use std::collections::{hash_map::RandomState, HashSet};
+use std::{
+    cmp::Ordering,
+    collections::{hash_map::RandomState, HashSet},
+    path::Path,
+};
 use utils::{read_lines, Config};
 
 /// Information of a Card:
@@ -55,40 +59,91 @@ impl From<String> for Card {
     }
 }
 
-#[warn(unused_variables)]
-fn part_one(line: String) -> usize {
-    let card = Card::from(line);
-    let winners: HashSet<usize, RandomState> = card
-        .current
-        .intersection(&card.winning)
-        .map(|item| *item)
-        .collect();
-    if winners.is_empty() {
-        return 0;
+impl Card {
+    fn points(&self) -> usize {
+        let winners: HashSet<usize, RandomState> = self
+            .current
+            .intersection(&self.winning)
+            .map(|item| *item)
+            .collect();
+        if winners.is_empty() {
+            return 0;
+        }
+
+        let points = (2 as usize).pow((winners.len() - 1) as u32);
+        points
     }
 
-    let points = (2 as usize).pow((winners.len() - 1) as u32);
-    // println!("Card {:?}: {:?}", card.id, points);
-    points
+    fn winners_amount(&self) -> usize {
+        self.current
+            .intersection(&self.winning)
+            .map(|item| *item)
+            .count()
+    }
+}
+
+// Sort only by card ID
+impl Ord for Card {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.id).cmp(&other.id)
+    }
+}
+
+impl PartialOrd for Card {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Card {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Card {}
+
+fn part_one(file: &Path) -> usize {
+    let mut sum: usize = 0;
+    for line in read_lines(&file).unwrap() {
+        if let Ok(text) = line {
+            sum += Card::from(text).points() as usize;
+        }
+    }
+    sum
 }
 
 #[warn(unused_variables)]
-fn part_two(line: String) -> usize {
-    let _ = line;
-    todo!();
+fn part_two(file: &Path) -> usize {
+    let mut cards = vec![];
+    for line in read_lines(&file).unwrap() {
+        if let Ok(text) = line {
+            cards.push(Card::from(text));
+        }
+    }
+    cards.sort();
+
+    let mut amounts: Vec<usize> = vec![1; cards.len()];
+
+    for (i, card) in cards.iter().enumerate() {
+        let winners_amount = card.winners_amount();
+        let current_card_amount: usize = *amounts.get(i).unwrap_or(&(0 as usize));
+        for next_i in 1..winners_amount + 1 {
+            if let Some(amount) = amounts.get_mut(i + next_i) {
+                *amount += current_card_amount;
+            }
+        }
+    }
+
+    amounts.iter().sum()
 }
 
 fn main() {
     let config = Config::parse();
-    let mut sum: usize = 0;
-    for line in read_lines(config.file).unwrap() {
-        if let Ok(text) = line {
-            sum += match config.part {
-                1 => part_one(text) as usize,
-                2 => part_two(text) as usize,
-                _ => panic!("Part should be either 1 or 2 (1 by default)"),
-            }
-        }
-    }
-    println!("{}", sum);
+    let result = match config.part {
+        1 => part_one(&config.file) as usize,
+        2 => part_two(&config.file) as usize,
+        _ => panic!("Part should be either 1 or 2 (1 by default)"),
+    };
+    println!("{}", result);
 }
